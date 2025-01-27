@@ -50,12 +50,13 @@
     <ClCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalIncludeDirectories>$(SolutionDir)fmtlib\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)fmtlib\;..\dependencies\StubMaker\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CppLanguageStd>Cpp17</CppLanguageStd>
     </ClCompile>
     <Link>
       <Addressing>NonAslr</Addressing>
-      <AdditionalDependencies>$(SolutionDir)ORBIS_Debug\fmtlib.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(SolutionDir)ORBIS_Debug\fmtlib.a;-lSceLibcInternal_gen_stub_weak;-lkernel_gen_stub_weak;-lSceRtc_gen_stub_weak;-lSceSystemStateMgr_gen_stub_weak;-lSceSystemService_gen_stub_weak;-lSceSysCore_gen_stub_weak;-lSceUserService_gen_stub_weak;-lSceNet_gen_stub_weak;-lSceLncUtil_gen_stub_weak;-lScePad_stub_weak;-lSceRtc_stub_weak;-lSceVideoOut_stub_weak;-lSceDbg_stub_weak;-lSceNpWebApi_stub_weak;-lSceNpAuth_stub_weak;-lSceNpManager_stub_weak;-lSceImeDialog_stub_weak;-lSceAudioOut_stub_weak;-lSceAudioIn_stub_weak;-lSceVoice_stub_weak;-lSceSysmodule_stub_weak;-lSceHttp_stub_weak;-lSceSsl_stub_weak;-lSceNet_stub_weak;-lSceGameLiveStreaming_stub_weak;-lSceGnm_debug;-lSceGnmx_debug;-lSceGnmDriver_stub_weak;-lSceGnf_debug;-lSceGpuAddress;-lSceDbgVideoOut_stub_weak;-lScePm4Dump;-lScePngDec_stub_weak;-lSceJpegDec_stub_weak;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\dependencies\StubMaker;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>"$(SolutionDir)make_fself.exe"  "$(OutputPath)$(TargetName).prx"  "$(OutputPath)$(TargetName).sprx"</Command>
