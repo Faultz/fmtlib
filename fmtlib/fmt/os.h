@@ -286,18 +286,6 @@ class FMT_API file {
   // Attempts to write count bytes from the specified buffer to the file.
   auto write(const void* buffer, size_t count) -> size_t;
 
-  // Duplicates a file descriptor with the dup function and returns
-  // the duplicate as a file object.
-  static auto dup(int fd) -> file;
-
-  // Makes fd be the copy of this file descriptor, closing fd first if
-  // necessary.
-  void dup2(int fd);
-
-  // Makes fd be the copy of this file descriptor, closing fd first if
-  // necessary.
-  void dup2(int fd, std::error_code& ec) noexcept;
-
   // Creates a buffered_file object associated with this file and detaches
   // this file object from the file.
   auto fdopen(const char* mode) -> buffered_file;
@@ -307,15 +295,6 @@ class FMT_API file {
   // wcstring_view filename. Windows only.
   static file open_windows_file(wcstring_view path, int oflag);
 #  endif
-};
-
-struct FMT_API pipe {
-  file read_end;
-  file write_end;
-
-  // Creates a pipe setting up read_end and write_end file objects for reading
-  // and writing respectively.
-  pipe();
 };
 
 // Returns the memory page size.

@@ -10,6 +10,9 @@
 #  define _CRT_SECURE_NO_WARNINGS
 #endif
 
+#include <sys/param.h>
+#include <kernel.h>
+
 #include "fmt/os.h"
 
 #ifndef FMT_MODULE
@@ -36,6 +39,7 @@
 #  ifdef _WIN32
 #    include <windows.h>
 #  endif
+
 #endif
 
 #ifdef _WIN32
@@ -216,7 +220,7 @@ file::file(cstring_view path, int oflag) {
   auto converted = detail::utf8_to_utf16(string_view(path.c_str()));
   *this = file::open_windows_file(converted.c_str(), oflag);
 #  else
-  FMT_RETRY(fd_, FMT_POSIX_CALL(open(path.c_str(), oflag, default_open_mode)));
+  FMT_RETRY(fd_, FMT_POSIX_CALL(sceKernelOpen(path.c_str(), oflag, default_open_mode)));
   if (fd_ == -1)
     FMT_THROW(
         system_error(errno, FMT_STRING("cannot open file {}"), path.c_str()));
@@ -226,7 +230,7 @@ file::file(cstring_view path, int oflag) {
 file::~file() noexcept {
   // Don't retry close in case of EINTR!
   // See http://linux.derkeiler.com/Mailing-Lists/Kernel/2005-09/3000.html
-  if (fd_ != -1 && FMT_POSIX_CALL(close(fd_)) != 0)
+  if (fd_ != -1 && FMT_POSIX_CALL(sceKernelClose(fd_)) != 0)
     report_system_error(errno, "cannot close file");
 }
 
@@ -234,7 +238,7 @@ void file::close() {
   if (fd_ == -1) return;
   // Don't retry close in case of EINTR!
   // See http://linux.derkeiler.com/Mailing-Lists/Kernel/2005-09/3000.html
-  int result = FMT_POSIX_CALL(close(fd_));
+  int result = FMT_POSIX_CALL(sceKernelClose(fd_));
   fd_ = -1;
   if (result != 0)
     FMT_THROW(system_error(errno, FMT_STRING("cannot close file")));
@@ -258,7 +262,7 @@ long long file::size() const {
 #  else
   using Stat = struct stat;
   Stat file_stat = Stat();
-  if (FMT_POSIX_CALL(fstat(fd_, &file_stat)) == -1)
+  if (FMT_POSIX_CALL(sceKernelFstat(fd_, &file_stat)) == -1)
     FMT_THROW(system_error(errno, FMT_STRING("cannot get file attributes")));
   static_assert(sizeof(long long) >= sizeof(file_stat.st_size),
                 "return type of file::size is not large enough");
@@ -268,7 +272,7 @@ long long file::size() const {
 
 std::size_t file::read(void* buffer, std::size_t count) {
   rwresult result = 0;
-  FMT_RETRY(result, FMT_POSIX_CALL(read(fd_, buffer, convert_rwcount(count))));
+  FMT_RETRY(result, FMT_POSIX_CALL(sceKernelRead(fd_, buffer, convert_rwcount(count))));
   if (result < 0)
     FMT_THROW(system_error(errno, FMT_STRING("cannot read from file")));
   return detail::to_unsigned(result);
@@ -276,36 +280,10 @@ std::size_t file::read(void* buffer, std::size_t count) {
 
 std::size_t file::write(const void* buffer, std::size_t count) {
   rwresult result = 0;
-  FMT_RETRY(result, FMT_POSIX_CALL(write(fd_, buffer, convert_rwcount(count))));
+  FMT_RETRY(result, FMT_POSIX_CALL(sceKernelWrite(fd_, buffer, convert_rwcount(count))));
   if (result < 0)
     FMT_THROW(system_error(errno, FMT_STRING("cannot write to file")));
   return detail::to_unsigned(result);
-}
-
-file file::dup(int fd) {
-  // Don't retry as dup doesn't return EINTR.
-  // http://pubs.opengroup.org/onlinepubs/009695399/functions/dup.html
-  int new_fd = FMT_POSIX_CALL(dup(fd));
-  if (new_fd == -1)
-    FMT_THROW(system_error(
-        errno, FMT_STRING("cannot duplicate file descriptor {}"), fd));
-  return file(new_fd);
-}
-
-void file::dup2(int fd) {
-  int result = 0;
-  FMT_RETRY(result, FMT_POSIX_CALL(dup2(fd_, fd)));
-  if (result == -1) {
-    FMT_THROW(system_error(
-        errno, FMT_STRING("cannot duplicate file descriptor {} to {}"), fd_,
-        fd));
-  }
-}
-
-void file::dup2(int fd, std::error_code& ec) noexcept {
-  int result = 0;
-  FMT_RETRY(result, FMT_POSIX_CALL(dup2(fd_, fd)));
-  if (result == -1) ec = std::error_code(errno, std::generic_category());
 }
 
 buffered_file file::fdopen(const char* mode) {
@@ -336,24 +314,6 @@ file file::open_windows_file(wcstring_view path, int oflag) {
 }
 #  endif
 
-pipe::pipe() {
-  int fds[2] = {};
-#  ifdef _WIN32
-  // Make the default pipe capacity same as on Linux 2.6.11+.
-  enum { DEFAULT_CAPACITY = 65536 };
-  int result = FMT_POSIX_CALL(pipe(fds, DEFAULT_CAPACITY, _O_BINARY));
-#  else
-  // Don't retry as the pipe function doesn't return EINTR.
-  // http://pubs.opengroup.org/onlinepubs/009696799/functions/pipe.html
-  int result = FMT_POSIX_CALL(pipe(fds));
-#  endif
-  if (result != 0)
-    FMT_THROW(system_error(errno, FMT_STRING("cannot create pipe")));
-  // The following assignments don't throw.
-  read_end = file(fds[0]);
-  write_end = file(fds[1]);
-}
-
 #  if !defined(__MSDOS__)
 long getpagesize() {
 #    ifdef _WIN32
@@ -364,7 +324,7 @@ long getpagesize() {
 #      ifdef _WRS_KERNEL
   long size = FMT_POSIX_CALL(getpagesize());
 #      else
-  long size = FMT_POSIX_CALL(sysconf(_SC_PAGESIZE));
+  long size = PAGE_SIZE;
 #      endif
 
   if (size < 0)

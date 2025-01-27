@@ -71,6 +71,7 @@
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <CppLanguageStd>Cpp17</CppLanguageStd>
+      <AdditionalIncludeDirectories>..\dependencies\StubMaker\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <Addressing>NonAslr</Addressing>
